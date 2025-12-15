@@ -1,5 +1,5 @@
 import tensorflow as tf
-from data.generate_3d import generate_3d_cube, gaussian_initial_condition_3d
+from data_generation.generate_3d import generate_3d_cube, gaussian_initial_condition_3d
 from models.pinn import build_pinn
 from training.losses import heat_3d_loss, boundary_loss_3d, initial_condition_loss
 
