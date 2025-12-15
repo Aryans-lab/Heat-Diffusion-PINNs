@@ -1,5 +1,5 @@
 import tensorflow as tf
-from data.generate_2d import generate_2d_square, gaussian_initial_condition_2d
+from data_generation.generate_2d import generate_2d_square, gaussian_initial_condition_2d
 from models.pinn import build_pinn
 from training.losses import heat_2d_loss, boundary_loss_2d, initial_condition_loss
 
