@@ -1,16 +1,20 @@
 import tensorflow as tf
+from pathlib import Path
 from data_generation.generate_2d import generate_2d_square, gaussian_initial_condition_2d
 from models.pinn import build_pinn
 from training.losses import heat_2d_loss, boundary_loss_2d, initial_condition_loss
 
+ROOT = Path(__file__).resolve().parent.parent.parent
+
 def train_2d_model():
     """Train 2D heat equation PINN for domain [-L, L]."""
+    tf.keras.utils.set_random_seed(0)
+
     L, T, ALPHA = 1.0, 1.0, 0.1
     N_POINTS, EPOCHS, BATCH_SIZE = 60000, 10000, 2000
 
     # Generate data
     data = generate_2d_square(N_POINTS, L, T)
-    ic_func = lambda x, y: gaussian_initial_condition_2d(x, y)
 
     # Build model
     model = build_pinn(input_dim=3, hidden_units=64, num_layers=6)
@@ -24,7 +28,7 @@ def train_2d_model():
     bc_ds = to_dataset(data['boundary'])
 
     # Generate target values for initial condition
-    ic_vals = ic_func(data['initial'][:, 0:1], data['initial'][:, 1:2])
+    ic_vals = gaussian_initial_condition_2d(data['initial'][:, 0:1], data['initial'][:, 1:2])
 
     # Use zip to ensure each (input, label) pair is preserved
     ic_dataset = tf.data.Dataset.from_tensor_slices((data['initial'], ic_vals)) \
@@ -62,6 +66,6 @@ def train_2d_model():
         if epoch % 500 == 0:
             print(f"Epoch {epoch}: Total={total_loss:.4e} | PDE={pde_loss:.4e} | BC={bc_loss:.4e} | IC={ic_loss:.4e}")
 
-    model.save('saved_models/pinn_2d.keras')
+    model.save(str(ROOT / 'saved_models' / 'pinn_2d.keras'))
     return model
 

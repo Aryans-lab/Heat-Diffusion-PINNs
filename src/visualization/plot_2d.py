@@ -40,7 +40,6 @@ def animate_2d_solution(model, L=1.0, T=1.0, num_frames=40, resolution=100):
 
     ani = FuncAnimation(fig, update, frames=num_frames, interval=150, blit=True)
     plt.tight_layout()
-    plt.show()
     return ani
 
 def plot_static_snapshots(model, L=1.0, T=1.0, times=[0.0, 0.25, 0.5, 0.75, 1.0], resolution=100):

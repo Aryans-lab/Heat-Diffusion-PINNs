@@ -1,10 +1,15 @@
 import tensorflow as tf
+from pathlib import Path
 from data_generation.generate_1d import generate_1d_data, gaussian_initial_condition
 from models.pinn import build_pinn
 from training.losses import heat_1d_loss, boundary_loss, initial_condition_loss
 
+ROOT = Path(__file__).resolve().parent.parent.parent
+
 def train_1d_model():
     """Train 1D heat equation solver"""
+    tf.keras.utils.set_random_seed(0)
+
     # Configuration
     L = 1.0
     T = 1.0
@@ -17,7 +22,6 @@ def train_1d_model():
 
     # Generate data
     data = generate_1d_data(N_POINTS, L, T)
-    ic_func = lambda x: gaussian_initial_condition(x)
 
     # Create TensorFlow datasets with batching
     coll_ds = tf.data.Dataset.from_tensor_slices(data['collocation']).batch(BATCH_SIZE_COLL)
@@ -33,7 +37,7 @@ def train_1d_model():
         with tf.GradientTape() as tape:
             pde_loss_val = heat_1d_loss(model, coll_batch, ALPHA)
             bc_loss_val = boundary_loss(model, bc_batch, L=L)
-            ic_loss_val = initial_condition_loss(model, ic_batch, ic_func(ic_batch[:, 0:1]))
+            ic_loss_val = initial_condition_loss(model, ic_batch, gaussian_initial_condition(ic_batch[:, 0:1]))
 
             # Equal weights
             total_loss = pde_loss_val + bc_loss_val + ic_loss_val
@@ -56,5 +60,5 @@ def train_1d_model():
             print(f"  IC loss    = {ic_loss:.4e}")
 
     # Save model
-    model.save('saved_models/pinn_1d.keras')
+    model.save(str(ROOT / 'saved_models' / 'pinn_1d.keras'))
     return model

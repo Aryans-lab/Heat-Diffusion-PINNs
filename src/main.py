@@ -15,7 +15,6 @@ from training.train_3d import train_3d_model
 
 from visualization.plot_1d import animate_1d_solution
 from visualization.plot_2d import animate_2d_solution, plot_static_snapshots
-from visualization.plot_3d import animate_3d_solution
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,6 +67,17 @@ def main():
             model = tf.keras.models.load_model(SAVED_MODELS / "pinn_2d.keras", compile=False)
             plot_static_snapshots(model, L=args.L, T=args.T,
                                   times=[0.0, 0.25, 0.5, 0.75, 1.0])
+
+    elif args.dim == 3:
+        if args.train:
+            print("Training 3D model...")
+            train_3d_model()
+
+        if args.visualize:
+            raise NotImplementedError(
+                "3D visualization is not implemented yet "
+                "(src/visualization/plot_3d.py is missing)."
+            )
 
 if __name__ == "__main__":
     main()

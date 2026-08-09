@@ -1,31 +1,13 @@
 import tensorflow as tf
-import numpy as np
 
 def generate_1d_data(n_points=60000, L=1.0, T=1.0):
     """
-    Generate training data for 1D heat equation (domain: -L to +L)
-    Returns: 
-        dict: {import numpy as np
-import math
+    Generate training data for the 1D heat equation on the domain [-L, L].
 
-x = float(input("Enter x: "))
-acc_needed = float(input("Enter accuracy: "))
-true_value = np.sin(x)
-approx_value = 0
-i = 0
-
-accuracy = abs((true_value - approx_value) / true_value)
-
-while accuracy > acc_needed:  # keep looping until error is small enough
-    term = ((-1)**i) * (x**(2*i+1)) / math.factorial(2*i+1)
-    approx_value += term
-    i += 1
-    accuracy = abs((true_value - approx_value) / true_value)
-
-print("To achieve this accuracy, it needs to be computed for", i, "terms.")
-
+    Returns:
+        dict: {
             'collocation': interior points [x, t],
-            'boundary': boundary points [x, t],
+            'boundary': boundary points [x, t] (x = +/-L),
             'initial': initial condition points [x, t=0]
         }
     """
