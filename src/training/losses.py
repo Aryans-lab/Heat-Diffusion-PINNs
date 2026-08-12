@@ -14,6 +14,28 @@ def compute_derivatives(model, inputs):
     u_xx = tape2.gradient(u_x, inputs)[:, 0:1]  # ∂²u/∂x²
     return u, u_t, u_xx
 
+def compute_second_order_derivatives(model, inputs):
+    """Return (u, first, second) for a batch of inputs of shape (N, D).
+
+    first[:, i]  = ∂u/∂x_i      (including time as the last coordinate)
+    second[:, i] = ∂²u/∂x_i²    (diagonal of the Hessian)
+
+    The per-coordinate slices must be taken *inside* the outer tape context
+    so that the slicing ops are recorded; otherwise the second-order gradient
+    cannot be traced.
+    """
+    inputs = tf.convert_to_tensor(inputs)
+    n_coords = int(inputs.shape[-1])
+    with tf.GradientTape(persistent=True) as tape2:
+        tape2.watch(inputs)
+        with tf.GradientTape(persistent=True) as tape1:
+            tape1.watch(inputs)
+            u = model(inputs)
+        first_cols = [tape1.gradient(u, inputs)[:, i] for i in range(n_coords)]
+    second_cols = [tape2.gradient(f, inputs)[:, i] for i, f in enumerate(first_cols)]
+    del tape1, tape2
+    return u, tf.stack(first_cols, axis=1), tf.stack(second_cols, axis=1)
+
 def heat_1d_loss(model, inputs, alpha=0.1):
     u, u_t, u_xx = compute_derivatives(model, inputs)
     pde_residual = u_t - alpha * u_xx

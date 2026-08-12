@@ -91,6 +91,27 @@ The learned solution remains stable and physically meaningful without explicit d
 
 ---
 
+## Validation
+
+The trained models are validated against the **analytic solution** of the heat
+equation (separation of variables / sine series with zero Dirichlet boundary
+conditions). This requires no retraining:
+
+```bash
+python -m validation.evaluate   # run from src/
+```
+
+This reports L2 relative and max-absolute errors versus the exact solution over
+time, the PDE / boundary / initial-condition residuals, and pointwise error maps
+(see `results/validation/`). The derivative machinery used by the physics losses
+is also guarded by finite-difference checks:
+
+```bash
+python -m pytest tests/         # run from the repository root
+```
+
+---
+
 ### Dimensional Scaling
 
 - **1D:** Accurate temporal diffusion with symmetric profile spreading  
