@@ -1,0 +1,54 @@
+{
+ "experiment": "misspecification",
+ "preset": "paper",
+ "config": {
+  "alpha0": 0.1,
+  "n_modes": 160,
+  "n_experiments": 4000,
+  "seed": 10,
+  "n_space": 5,
+  "n_time": 20,
+  "sigma": 0.02,
+  "rhos": [
+   0.1,
+   0.3,
+   1.0,
+   3.0
+  ],
+  "worlds": [
+   {
+    "kind": "exact"
+   },
+   {
+    "kind": "stochastic",
+    "rho_true": 0.3
+   },
+   {
+    "kind": "stochastic",
+    "rho_true": 1.0
+   },
+   {
+    "kind": "stochastic",
+    "rho_true": 3.0
+   },
+   {
+    "kind": "loss",
+    "loss_rate": 0.02
+   },
+   {
+    "kind": "loss",
+    "loss_rate": 0.05
+   }
+  ]
+ },
+ "seconds": 424.56257700920105,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 14:31:22",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}

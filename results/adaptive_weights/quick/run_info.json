@@ -1,0 +1,35 @@
+{
+ "experiment": "adaptive_weights",
+ "preset": "quick",
+ "config": {
+  "alpha0": 0.1,
+  "sigma": 0.02,
+  "n_space": 5,
+  "n_time": 20,
+  "n_datasets": 2,
+  "seed": 11,
+  "n_modes": 128,
+  "width": 24,
+  "depth": 3,
+  "n_colloc": 2048,
+  "alpha_init": 0.07,
+  "adam_steps": 3000,
+  "adam_lr": 0.002,
+  "schemes": [
+   "equal",
+   "data_x100",
+   "gradnorm"
+  ],
+  "init_seed": 0
+ },
+ "seconds": 262.2386517524719,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 14:50:01",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}

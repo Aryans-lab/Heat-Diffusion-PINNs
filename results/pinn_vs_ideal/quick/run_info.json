@@ -1,0 +1,41 @@
+{
+ "experiment": "pinn_vs_ideal",
+ "preset": "quick",
+ "config": {
+  "alpha0": 0.1,
+  "sigma": 0.02,
+  "n_space": 5,
+  "n_time": 20,
+  "n_datasets": 1,
+  "seed": 3,
+  "n_modes": 128,
+  "rhos": [
+   0.1,
+   0.3,
+   1.0
+  ],
+  "width": 24,
+  "depth": 3,
+  "n_colloc": 2048,
+  "alpha_init": 0.05,
+  "archs": [
+   "mlp"
+  ],
+  "lm_iters": 200,
+  "adam_steps": 3000,
+  "adam_lr": 0.002,
+  "group_size": 8,
+  "init_seed": 0,
+  "alpha_warmup": 40
+ },
+ "seconds": 273.7465567588806,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 15:16:29",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}

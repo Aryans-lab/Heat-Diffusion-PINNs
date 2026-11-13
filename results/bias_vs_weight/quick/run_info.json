@@ -1,0 +1,39 @@
+{
+ "experiment": "bias_vs_weight",
+ "preset": "quick",
+ "config": {
+  "alpha0": 0.1,
+  "n_modes": 96,
+  "n_experiments": 400,
+  "seed": 0,
+  "designs": [
+   {
+    "n_space": 5,
+    "n_time": 20,
+    "sigma": 0.02
+   }
+  ],
+  "rhos": [
+   0.0316,
+   0.0562,
+   0.1,
+   0.1778,
+   0.3162,
+   0.5623,
+   1.0,
+   1.7783,
+   3.1623
+  ]
+ },
+ "seconds": 6.992124319076538,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 15:28:18",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a",
+  "git_dirty": true
+ }
+}

@@ -1,0 +1,32 @@
+{
+ "experiment": "forward_benchmark",
+ "preset": "quick",
+ "config": {
+  "alpha0": 0.1,
+  "dims": [
+   1
+  ],
+  "n_seeds": 2,
+  "recipes": [
+   "legacy",
+   "modern",
+   "lm"
+  ],
+  "width": 24,
+  "depth": 3,
+  "n_colloc": 2048,
+  "adam_steps": 3000,
+  "lm_iters": 150,
+  "group_size": 4
+ },
+ "seconds": 207.38392758369446,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 14:53:31",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}
