@@ -1,0 +1,57 @@
+{
+ "experiment": "bias_vs_weight",
+ "preset": "paper",
+ "config": {
+  "alpha0": 0.1,
+  "n_modes": 160,
+  "n_experiments": 4000,
+  "seed": 0,
+  "designs": [
+   {
+    "n_space": 5,
+    "n_time": 20,
+    "sigma": 0.02
+   },
+   {
+    "n_space": 5,
+    "n_time": 20,
+    "sigma": 0.05
+   },
+   {
+    "n_space": 3,
+    "n_time": 10,
+    "sigma": 0.02
+   },
+   {
+    "n_space": 9,
+    "n_time": 40,
+    "sigma": 0.02
+   }
+  ],
+  "rhos": [
+   0.0316,
+   0.0464,
+   0.0681,
+   0.1,
+   0.1468,
+   0.2154,
+   0.3162,
+   0.4642,
+   0.6813,
+   1.0,
+   1.4678,
+   2.1544,
+   3.1623
+  ]
+ },
+ "seconds": 649.280736207962,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 14:24:11",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}

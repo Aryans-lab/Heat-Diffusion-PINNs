@@ -1,0 +1,61 @@
+{
+ "experiment": "uv_divergence",
+ "preset": "paper",
+ "config": {
+  "alpha0": 0.1,
+  "cutoffs": {
+   "1": [
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    256,
+    512,
+    1024
+   ],
+   "2": [
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    256
+   ],
+   "3": [
+    4,
+    8,
+    16,
+    24,
+    32,
+    48
+   ]
+  },
+  "est_dim": 2,
+  "est_cutoffs": [
+   4,
+   8,
+   16,
+   32,
+   64
+  ],
+  "est_experiments": 2000,
+  "n_space": 3,
+  "n_time": 8,
+  "sigma": 0.02,
+  "weights_ratio": 0.02,
+  "seed": 20
+ },
+ "seconds": 99.7069959640503,
+ "environment": {
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "numpy": "2.4.6",
+  "time": "2026-11-13 14:33:04",
+  "torch": "2.15.0+cu132",
+  "cuda": false,
+  "git": "7a2db1a"
+ }
+}

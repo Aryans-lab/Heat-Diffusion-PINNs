@@ -1,4 +1,7 @@
-tensorflow-cpu>=2.15
+# Install PyTorch FIRST, with the wheel that matches your GPU driver
+# (see README, "Install"); then:  pip install -r requirements.txt && pip install -e .
 numpy>=1.26
+scipy>=1.11
 matplotlib>=3.8
-pytest>=7.4
+torch>=2.2
+pytest>=8.0

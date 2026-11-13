@@ -1,265 +1,238 @@
-# Heat Diffusion with Physics-Informed Neural Networks (PINNs)
+# idealpinn — what does an inverse PINN actually estimate?
 
-> Solving the heat equation **∂u/∂t = α ∇²u** in **1D, 2D, and 3D** with
-> mesh-free physics-informed neural networks — no labeled data, just the
-> governing PDE baked into the loss.
+A physics-informed neural network that infers a PDE coefficient from noisy data
+minimises *data misfit + weight × PDE residual*. This repository answers, for
+the heat equation, a question that is usually left to trial and error:
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+> If the network were perfectly expressive and perfectly trained, which number
+> would it return, how far is that number from the best possible estimate, and
+> what does the loss weight have to do with it?
 
----
+The answer is computed in closed form (no network involved) and then checked
+against real PINNs trained on the same data sets.
 
-## Table of Contents
+**Status: research code with first results, not a finished paper.** What has
+and has not been run is listed under [Status](#status). Read
+[Limitations](#limitations-and-open-questions) before quoting anything.
 
-- [Overview](#overview)
-- [The Physics](#the-physics)
-- [The Method](#the-method)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Results](#results)
-- [Validation Against the Exact Solution](#validation-against-the-exact-solution)
-- [Key Findings](#key-findings)
-- [Limitations & Future Work](#limitations--future-work)
-- [Author](#author)
+## The idea in five lines
 
----
+* The L² residual penalty is the action of the *stochastic* heat equation
+  u_t = α∇²u + ξ. The loss-weight ratio fixes the noise strength 1/β of ξ.
+* Minimising the PINN loss over the field can be done exactly. What remains is
+  a function of α alone: `tree(α) = rᵀ(σ²I + C_α/β)⁻¹r`. Its minimiser is the
+  **ideal PINN estimate**.
+* The exact marginal likelihood of the same model has one more term,
+  `log det(I + C_α/(βσ²))`. The PINN objective leaves it out. That omission is
+  the source of the bias.
+* One dimensionless number controls everything: ρ = (model error allowed by
+  the loss) / (measurement noise).
+* All of this is compared with the Cramér–Rao bound, over thousands of
+  pseudo-experiments, in three worlds: exact physics, random model error,
+  unmodelled cooling.
 
-## Overview
+Definitions and derivations: [`docs/THEORY.md`](docs/THEORY.md).
 
-Partial differential equations (PDEs) govern everything from thermal conduction
-to diffusion in fluids and materials. Traditional solvers (finite difference /
-finite element) rely on structured grids and become expensive in higher
-dimensions or on complex domains.
+## Results so far
 
-**Physics-Informed Neural Networks (PINNs)** take a different route: a neural
-network represents the solution field `u(x, t)`, and the *physics is embedded
-directly in the loss function* through automatic differentiation. This makes the
-approach **mesh-free** and dimension-agnostic — the same code trains a 1D, 2D,
-or 3D solver.
+Units: CRB = Cramér–Rao bound of the exact-physics model. Design unless
+stated: 1D, 5 sensors × 20 times (N = 100), σ = 0.02, α0 = 0.1.
 
-This project applies PINNs to the heat (diffusion) equation in 1D, 2D, and 3D,
-and — crucially — **validates the trained models against the analytic solution**,
-so the results are measured, not just visualized.
+### 1. Closed-form theory (paper presets, 4000 pseudo-experiments each)
 
----
+Exact physics, `results/bias_vs_weight/paper/`:
 
-## The Physics
+| ρ | ideal PINN bias | ideal PINN sd | coverage of nominal 68 % interval |
+|---:|---:|---:|---:|
+| 0.03 – 0.1 | −0.00 … −0.01 | 1.01 – 1.02 | 0.68 – 0.73 |
+| 0.32 | −0.11 | 1.27 | 0.84 |
+| 1.0 | −1.14 | 2.06 | 0.84 |
+| 2.2 | −3.97 (3 % of estimates at the scan edge) | 2.47 | 0.78 |
 
-### Governing equation
+* Equal loss weights correspond to ρ ≈ 0.08 for this design: there the ideal
+  PINN is the maximum-likelihood estimate to within the Monte-Carlo error.
+* Up-weighting the data moves ρ up. By ρ = 1 the estimate is biased by about
+  one CRB and its spread has doubled.
+* At fixed ρ = 1 the bias is larger for more data: −0.31 (N = 30), −1.14
+  (N = 100), −4.78 (N = 360, 5 % of estimates at the edge of the scan range).
+  These three designs also differ in sensor count, so this is not a clean
+  scaling law.
+* One loop at the same fixed ρ is biased the other way (+0.89 at ρ = 1). With
+  ρ learned from the data it is close to the bound again (bias −0.01, sd 1.12).
 
-On a hypercube domain `[-L, L]^d` and time interval `[0, T]`:
+Imperfect physics, `results/misspecification/paper/table.md` (RMSE/CRB, and
+coverage in brackets):
 
-\[
-\frac{\partial u}{\partial t} \;=\; \alpha\,\nabla^2 u
-\]
+| world | MLE | ideal PINN, ρ = 1 | one loop, ρ = 1 | one loop, learned ρ |
+|---|---:|---:|---:|---:|
+| exact | 0.98 (0.68) | 2.30 (0.85) | 2.22 (0.88) | 1.05 (0.72) |
+| random model error, ρ_true = 1 | 5.72 (0.14) | 3.78 (0.60) | 3.40 (0.69) | 3.44 (0.67) |
+| random model error, ρ_true = 3 | 17.8 (0.04) | 10.8 (0.19) | 9.50 (0.23) | 7.05 (0.69) |
+| unmodelled cooling, h = 0.05 | 2.74 (0.07) | 2.03 (0.91) | 2.82 (0.77) | 2.63 (0.21) |
 
-with
+* When the model error is real, the hard-constrained fit is badly
+  over-confident (14 % coverage instead of 68 %). The learned-ρ marginal
+  likelihood stays calibrated and reaches the bound of that world (3.38 CRB
+  at ρ_true = 1).
+* Nothing here repairs a deterministic missing term. The ideal PINN's good
+  score for cooling at ρ = 1 is a cancellation of two biases of opposite sign
+  (its bias is +1.85 at ρ = 0.3 and −4.83 at ρ = 3).
 
-- `u(x, t)` — temperature field,
-- `α` — thermal diffusivity (`α = 0.1` here),
-- `∇²` — Laplacian in the spatial coordinates.
+Resolution dependence, `results/uv_divergence/paper/`: the point variance of
+the implied model-error field converges in 1D (0.806), grows logarithmically
+in 2D and linearly in 3D with the spectral cut-off Λ. In 2D at fixed loss
+weights the ideal PINN bias moves from −0.64 (Λ = 4) to −2.12 (Λ = 64), with
+the steps shrinking (−2.02 at Λ = 32). So with point data the meaning of a
+loss weight depends on the resolution of the network when d ≥ 2.
 
-### Initial condition
+### 2. Trained networks versus the closed form (smoke runs only)
 
-A Gaussian "temperature bump" centered at the origin:
+Single data set, tanh MLP with 1298 parameters, 2048 collocation points,
+Levenberg–Marquardt, 200 iterations, about 3 minutes on 2 CPU cores
+(`results/pinn_vs_ideal/quick/`):
 
-\[
-u(\mathbf{x}, 0) \;=\; A\,\exp\!\left(-\frac{|\mathbf{x}|^2}{2\sigma^2}\right)
-\]
+| ρ | (PINN − ideal PINN)/CRB | (PINN − MLE)/CRB | predicted (ideal − MLE)/CRB |
+|---:|---:|---:|---:|
+| 0.1 | −0.08 | −0.14 | −0.06 |
+| 0.3 | −0.01 | −0.40 | −0.39 |
+| 1.0 | +0.08 | −2.07 | −2.15 |
 
-### Boundary conditions
+On this data set the network lands on the predicted estimate, not on the MLE.
+This is one data set and one initialisation.
 
-Zero Dirichlet conditions on every face of the domain:
+Because the closed form also gives the value the loss must reach, training can
+be checked against it. In the 8-network smoke ensemble
+(`results/pinn_ensemble/quick/`, 922 parameters, 1024 collocation points, 250
+iterations) the two go together:
 
-\[
-u(\mathbf{x}, t)\big|_{\partial[-L,L]^d} = 0
-\]
+| final loss / ideal loss | (PINN − ideal PINN)/CRB |
+|---:|---:|
+| 1.005, 1.005, 1.007 | −0.10, +0.03, +0.13 |
+| 0.989 (below the continuum optimum) | +1.31 |
+| 1.07, 1.12, 1.13, 1.36 (not converged; all four are the ρ = 1 networks) | −0.82, −0.17, −0.14, −3.10 |
 
-Physically: heat diffuses out of the Gaussian bump, spreads toward the walls,
-and the solution decays to zero everywhere.
+The experiment labels a network "certified" when its loss is within 1 % of the
+ideal value. That threshold was chosen after looking at these eight networks,
+so it proves nothing here, and the single-data-set run above shows it is not a
+necessary condition (there the ρ = 1 network is at 1.17 and still within
+0.08 CRB).
+Eight networks are an illustration, not a statistic. The `paper` preset (192
+networks) is what tests this properly, and it has not been run.
 
----
+### 3. Things that went wrong and are part of the story
 
-## The Method
+* **α collapses towards zero** if it is trainable from the first iteration. A
+  fresh network has u_t ≈ 0, so the residual is proportional to α and the
+  optimiser shrinks α. In the first smoke ensemble 2 of 12 networks ended at
+  α = 0.046 and α = 0.000. With α frozen for the first 40 iterations (now the
+  default) none of the 8 networks in the rerun collapsed. The two runs differ
+  in ensemble size and iteration count as well, so this is not a controlled
+  comparison.
+* **Adam is slow.** After 3000 steps it is more than 30 CRB from the ideal
+  estimate. After 20 000 steps (10 minutes; `results/pinn_vs_ideal/extra_adam20k/`)
+  it is still 2.6 to 9.1 CRB short and α is still rising. Levenberg–Marquardt
+  is within 0.1 CRB after 3 minutes on the same data. Whether Adam gets there
+  in the 60 000–80 000 steps of the `paper` presets is not known.
+* **Gradient-norm loss balancing moved the weights to ρ ≈ 0.87** in the smoke
+  run (two data sets, 3000 Adam steps), i.e. from the unbiased regime into the
+  biased one. The networks were unconverged, so this is only a pointer to what
+  `adaptive_weights` should measure.
 
-A fully connected `tanh` network `u_θ(x, t)` approximates the solution. Instead
-of training on data, it is trained to **satisfy the physics** by minimizing a
-composite loss:
+### 4. Forward problem, 1D smoke run (`results/forward_benchmark/quick/`)
 
-\[
-\mathcal{L} \;=\; \underbrace{\mathcal{L}_{\text{PDE}}}_{\text{residual}}
-        \;+\; \underbrace{\mathcal{L}_{\text{IC}}}_{\text{initial condition}}
-        \;+\; \underbrace{\mathcal{L}_{\text{BC}}}_{\text{boundary condition}}
-\]
+| recipe | relative L² error | time for 2 seeds (2 CPU cores) |
+|---|---:|---:|
+| legacy: soft constraints, Adam, 3000 steps | 3.3e-2 | 76 s |
+| modern: exact constraints, Fourier features, causal weights, Adam | 1.4e-3 | 67 s |
+| exact constraints + Levenberg–Marquardt, 150 iterations | 6.0e-4 | 64 s |
 
-| Term | Formula | What it enforces |
-|---|---|---|
-| PDE residual | `‖ ∂u_θ/∂t − α ∇²u_θ ‖²` | the heat equation holds at collocation points |
-| IC loss | `‖ u_θ(x, 0) − u_IC(x) ‖²` | matches the Gaussian bump at `t = 0` |
-| BC loss | `‖ u_θ ‖²` on the boundary | temperature is pinned to zero at the walls |
+2D and 3D are in the `paper` preset and have not been run.
 
-The spatial and temporal derivatives `∂u/∂t`, `∂u/∂x`, `∂²u/∂x²`, ... are
-computed with **automatic differentiation** (`tf.GradientTape`), so no
-discretization or meshing is ever needed. Training uses random collocation
-points sampled uniformly in space–time, and Adam to minimize the composite loss.
+## Status
 
----
+| experiment | what it does | `quick` | `paper` |
+|---|---|---|---|
+| `bias_vs_weight` | bias, spread, coverage vs ρ, four designs | run (9 s) | run (11 min) |
+| `misspecification` | six worlds, all estimators | run (30 s) | run (7 min) |
+| `uv_divergence` | cut-off dependence, d = 1, 2, 3 | run (6 s) | run (2 min) |
+| `pinn_vs_ideal` | trained PINN vs closed form, LM and Adam | run (5 min) | **not run** |
+| `pinn_ensemble` | ensemble of PINNs vs predicted bias and spread | run (5 min) | **not run** |
+| `adaptive_weights` | which ρ loss balancing ends up at | run (4 min) | **not run** |
+| `forward_benchmark` | forward solve, three recipes, 1D–3D | run, 1D only | **not run** |
 
-## Project Structure
+Everything above was produced on a 2-core CPU sandbox with 4 GB of RAM and no
+GPU; times are for that machine. The neural `paper` presets are sized by
+estimate for a 6-core laptop with an RTX 3050 (4 GB) and have never been
+executed. Treat their settings as a starting point.
 
-```
-.
-├── README.md
-├── conftest.py                 # pytest path setup for the src/ package
-├── data/                       # no raw data needed (points are generated on the fly)
-├── results/
-│   ├── figures/                # animations & snapshots (heat_1d.gif, ...)
-│   └── validation/             # error reports, CSVs and error maps
-├── saved_models/               # trained pinn_1d/2d/3d.keras
-├── src/
-│   ├── main.py                 # CLI entry point (train / visualize / validate)
-│   ├── data_generation/        # collocation, boundary & IC point samplers
-│   ├── models/                 # build_pinn network factory
-│   ├── training/               # losses.py + the three training scripts
-│   ├── validation/             # analytic solution & error evaluation
-│   └── visualization/          # 1D/2D/3D animations & static plots
-└── tests/                      # finite-difference checks on the derivative code
-```
-
----
-
-## Installation
+## Install and run
 
 ```bash
-# Clone & install (Python 3.11+, TensorFlow 2.x)
-git clone https://github.com/Aryans-lab/Heat-Diffusion-PINNs.git
-cd Heat-Diffusion-PINNs
-pip install -r requirements.txt   # or: pip install tensorflow numpy matplotlib
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install torch --index-url https://download.pytorch.org/whl/cu121   # pick the wheel for your driver
+pip install -r requirements.txt
+pip install -e .
+
+python -m pytest -q                              # checks of theory and derivatives
+python -m idealpinn list
+python -m idealpinn all --preset quick           # smoke run of everything
+python -m idealpinn all --preset paper --only theory
+python -m idealpinn run pinn_vs_ideal --preset paper
 ```
 
----
+Outputs go to `results/<experiment>/<preset>/` (`results.json`,
+`run_info.json` with the full configuration and environment, figures).
+Any preset entry can be overridden: `--set n_datasets=16 group_size=4`.
 
-## Usage
+Step-by-step instructions for an AI agent, including what to do on
+out-of-memory and what to report back: [`AGENTS.md`](AGENTS.md).
 
-Everything is driven from `src/main.py`. Run from inside `src/`:
+## Limitations and open questions
 
-```bash
-# Train a 1D model (also 2D / 3D with --dim 2 / --dim 3)
-python main.py --dim 1 --train
+* **Linear PDE, one scalar parameter, simple geometry.** The closed form
+  relies on linearity. For non-linear PDEs the same construction is only a
+  Laplace approximation.
+* **The network check is small and 1D**: one data set at full quality, eight
+  networks in the ensemble. The central claim "trained PINNs follow the
+  tree-level estimator" rests on the `paper` runs that are still to be done.
+* **Collocation effects are not quantified.** A network can undercut the
+  continuum loss by exploiting the finite collocation set, and its α then
+  moves (one case above, +1.3 CRB). At ρ = 1 the PDE residual on fresh points
+  was 9 times (with the α warm-up) to about 400 times (an earlier run without
+  it, not kept in `results/`) the residual on the training points. The ideal field has integrable
+  singularities in its residual at the sensor locations, so part of this may
+  be physics and not plain over-fitting; that has not been checked. A sweep
+  over `n_colloc` is the next experiment to add.
+* **Scan range.** Estimates are found on a grid of ±14 CRB around the truth.
+  Rows marked "scan edge" (or `edge > 0.02`) are bounds, not values.
+* **Novelty.** That soft-constrained PINN parameter estimates are biased is
+  known, and so is the field-theory/kernel reading of the PINN loss (see
+  references in `docs/THEORY.md`). What may be new is the closed-form
+  estimator with its frequentist properties against the Cramér–Rao bound, the
+  identification of ρ, the certification of training by the ideal loss value,
+  and the resolution dependence for d ≥ 2. The literature search behind this
+  was done from abstracts and summaries, not full texts. A proper search
+  is needed before claiming any of it in a paper, in particular against the
+  work of Alberts & Bilionis and of Doumèche, Bach, Biau & Boyer.
+* **No classical baseline beyond the MLE** (which is the classical baseline
+  for this problem, since the forward solution is known in closed form). BiLO
+  and Bayesian PINNs are not implemented; `profiled` is the closed-form
+  counterpart of a bilevel outer loss with a soft inner fit, not BiLO itself.
 
-# Visualize with the saved model (saves results/figures/heat_1d.gif)
-python main.py --dim 1 --visualize
+## Repository layout
 
-# Static time snapshots (2D / 3D)
-python main.py --dim 2 --static
-
-# Validate the saved models against the exact solution
-python -m validation.evaluate
-
-# Run the derivative tests
-python -m pytest tests/
+```
+idealpinn/exact/        closed-form theory: spectral solution, kernel, estimators, studies
+idealpinn/nn/           PyTorch PINNs: analytic-derivative MLP, Levenberg–Marquardt, Adam
+idealpinn/experiments/  seven experiments, each with quick and paper presets
+tests/                  17 tests, incl. brute-force and Monte-Carlo checks of the formulas
+docs/THEORY.md          definitions, derivations, references
+results/                reference outputs from the development machine
+legacy/                 the original 2025 TensorFlow project (forward PINNs, 1D–3D)
+AGENTS.md               run book
 ```
 
-| Flag | Effect |
-|---|---|
-| `--dim {1,2,3}` | space dimension to solve |
-| `--train` | train a fresh model |
-| `--visualize` | animate the solution with the saved model |
-| `--static` | static time snapshots (2D/3D) |
-| `--L`, `--T` | domain half-length and time horizon |
+## Licence
 
----
-
-## Results
-
-### Qualitative behavior
-
-- A smooth Gaussian bump that diffuses and flattens over time.
-- Radial / volumetric spreading in 2D and 3D that matches the physics.
-- Stable, physically meaningful predictions without any grid-based solver.
-
-### Quantitative validation (measured, not just plotted)
-
-Each saved model was evaluated against the **analytic heat-equation solution**
-(separation of variables → sine series). `L2` error is relative to the
-norm of the exact field.
-
-| Dimension | L2 rel. error @ t = 0 | L2 rel. error @ t = 1 | PDE residual (RMS) |
-|---|---:|---:|---:|
-| **1D** | 3.7e-3 | 9.6e-3 | 2.8e-3 |
-| **2D** | 2.1e-2 | 9.6e-2 | 1.4e-2 |
-| **3D** | 2.3e-2 | 8.2e-2 | 4.6e-3 |
-
-The 1D solver is accurate to ~1%; higher-dimensional cases degrade to ~10% at
-long times — a typical signature of a *plain* PINN (no loss reweighting or
-causal training), and a clear target for the improvements listed below.
-
-Full tables, residuals and error maps live in
-[`results/validation/`](results/validation/validation_report.md).
-
----
-
-## Validation Against the Exact Solution
-
-Because the heat equation on `[-L, L]^d` with zero Dirichlet conditions has a
-known analytic solution, this project measures the models instead of trusting
-them:
-
-**Separation of variables.** With `k_n = nπ/(2L)` and a separable Gaussian
-initial condition `f(x₁, …, x_d) = ∏ᵢ g(xᵢ)`,
-
-\[
-u(\mathbf{x}, t) = \prod_{i=1}^{d} \sum_{n\ge 1}
-B_n\, e^{-\alpha k_n^2 t}\,\sin\!\big(k_n (x_i + L)\big),
-\qquad
-B_n = \frac{1}{L}\int_{-L}^{L} g(x)\sin\!\big(k_n(x+L)\big)\,dx .
-\]
-
-`src/validation/analytic.py` builds this series, and
-`src/validation/evaluate.py` reports:
-
-- **L2 relative & max-absolute errors** over time,
-- **PDE / boundary / IC residuals** computed by the very loss functions used in
-  training (a direct measure of how well the physics is satisfied),
-- **pointwise error maps** (`results/validation/*d_error.png`).
-
-A self-check verifies the series reproduces the initial condition to machine
-precision before any error is reported.
-
-The derivative code — the heart of any PINN — is guarded by
-**finite-difference tests** (`tests/test_derivatives.py`): the analytical
-first/second derivatives from `GradientTape` are compared against central
-finite differences, and the generic derivative helper is checked to reproduce
-each physics loss exactly.
-
----
-
-## Key Findings
-
-- PINNs solve diffusion-type PDEs **without any labeled data**.
-- Random collocation sampling avoids mesh generation entirely.
-- Higher-dimensional problems reuse the same architecture and training loop.
-- The saved models are physically correct at short times; accuracy degrades
-  over long horizons for 2D/3D — motivating modern PINN techniques.
-
----
-
-## Limitations & Future Work
-
-| Limitation | Planned fix |
-|---|---|
-| Accuracy degrades at late times (esp. 2D/3D) | Causal training & NTK-based / self-adaptive loss weighting |
-| Equal loss weighting is fragile | Hard-constrained IC/BC via output transforms |
-| Sharp gradients not resolved | Residual-based adaptive refinement (RAR), Fourier features |
-| Slow convergence | L-BFGS refinement after Adam, quasi-Monte-Carlo sampling |
-| Fixed diffusivity | Inverse problems: *identify* `α(x)` from noisy data |
-| Linear PDE only | Nonlinear equations (Burgers, Allen–Cahn) |
-
----
-
-## Author
-
-**Aryan Bandyopadhyay** · Integrated MSc Physics
-School of Physical Sciences, NISER Bhubaneswar
+MIT, see `LICENSE`.
