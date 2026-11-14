@@ -44,10 +44,15 @@ network derivatives.
 ## 3. Smoke run (about 15–25 minutes on the CPU, less with a GPU)
 
 ```bash
-python -m idealpinn all --preset quick
+python -m idealpinn all --preset quick --force
 ```
 
-Expected: the final line is `=== summary: all experiments finished`, and each
+`--force` is required: the repository ships reference results from the
+development machine, and without it every experiment that already has a
+`run_info.json` is skipped.
+
+Expected: no line says `already done, skipping`, the final line is
+`=== summary: all experiments finished`, and each
 `results/<experiment>/quick/` holds `results.json`, `run_info.json` and at
 least one `.png`.
 
@@ -56,7 +61,7 @@ least one `.png`.
 Theory (CPU only, about 20 minutes in total):
 
 ```bash
-python -m idealpinn all --preset paper --only theory
+python -m idealpinn all --preset paper --only theory --force
 ```
 
 Neural, one at a time, in this order (the first is the most important):
@@ -73,8 +78,9 @@ hours, not minutes; `pinn_ensemble` is the longest. Every run prints progress
 with elapsed seconds, so extrapolate after the first few lines and report the
 estimate before waiting.
 
-`python -m idealpinn all --preset paper` skips experiments that already have a
-`run_info.json`; add `--force` to rerun.
+`python -m idealpinn all` skips experiments that already have a
+`run_info.json` (including the shipped reference results); `--force` reruns
+them. `python -m idealpinn run <experiment>` never skips.
 
 ### If the GPU runs out of memory
 
