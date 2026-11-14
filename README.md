@@ -176,10 +176,13 @@ pip install -e .
 
 python -m pytest -q                              # checks of theory and derivatives
 python -m idealpinn list
-python -m idealpinn all --preset quick           # smoke run of everything
-python -m idealpinn all --preset paper --only theory
+python -m idealpinn all --preset quick --force   # smoke run of everything
+python -m idealpinn all --preset paper --only theory --force
 python -m idealpinn run pinn_vs_ideal --preset paper
 ```
+
+`all` skips any experiment that already has results, and the repository ships
+reference results, so `--force` is needed to rerun them on your machine.
 
 Outputs go to `results/<experiment>/<preset>/` (`results.json`,
 `run_info.json` with the full configuration and environment, figures).
